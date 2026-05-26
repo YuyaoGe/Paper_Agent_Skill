@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  每天 22:00（北京时间）调用 daily_fetch.sh
+
+  安装：
+    cp scripts/com.yuyaoge.paper-daily-fetch.plist ~/Library/LaunchAgents/
+    launchctl unload ~/Library/LaunchAgents/com.yuyaoge.paper-daily-fetch.plist 2>/dev/null
+    launchctl load ~/Library/LaunchAgents/com.yuyaoge.paper-daily-fetch.plist
+
+  查看状态：
+    launchctl list | grep paper-daily-fetch
+    tail -f /Users/yuyaoge/Project/paper_reader/.kimi_logs/daily_*.log
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.yuyaoge.paper-daily-fetch</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-lc</string>
+        <string>/Users/yuyaoge/Project/Paper_Agent_Skill/scripts/daily_fetch.sh</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>22</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/yuyaoge/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/yuyaoge</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/yuyaoge/Project/paper_reader/.kimi_logs/launchd.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/yuyaoge/Project/paper_reader/.kimi_logs/launchd.err.log</string>
+</dict>
+</plist>

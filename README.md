@@ -51,14 +51,64 @@ python3 scripts/fetch_hf_papers.py
 
 ```
 hf-paper-filter/
-├── README.md                       # 本文件
-├── SKILL.md                        # AI Agent Skill 完整工作流文档
-├── LICENSE                         # MIT License
+├── README.md                              # 本文件
+├── SKILL.md                               # AI Agent Skill 完整工作流文档
+├── LICENSE                                # MIT License
 ├── scripts/
-│   └── fetch_hf_papers.py          # 核心过滤脚本
+│   ├── fetch_hf_papers.py                 # 核心过滤脚本（纯 Python 初筛）
+│   ├── run_kimi_one_day.sh                # 调用 Kimi 处理单天的全流程
+│   ├── backfill_papers.sh                 # 批量并行补录指定日期范围
+│   ├── merge_batches.py                   # 将 batch JSON 合并到 paper_list.md
+│   ├── daily_fetch.sh                     # 每日定时任务（爬取+合并+推送）
+│   └── com.yuyaoge.paper-daily-fetch.plist# launchd 配置（每天 22:00 自动运行）
 └── references/
-    └── batch_process.md            # 批量处理策略参考
+    └── batch_process.md                   # 批量处理策略参考
 ```
+
+## 🛠 自动化工作流（与 [paper_reader](https://github.com/YuyaoGe/paper_reader) 联动）
+
+本项目同时提供一组配合 [Kimi Code CLI](https://moonshotai.github.io/kimi-cli/) 的自动化脚本，实现「每天自动爬取并入库 HuggingFace Daily Papers」。
+
+### 1. 安装 Skill 到 Kimi
+
+```bash
+mkdir -p ~/.kimi/skills
+ln -sfn "$PWD" ~/.kimi/skills/hf-paper-filter
+```
+
+### 2. 历史日期批量补录
+
+并行启动多个 Kimi 子任务（默认并发 6），把缺失的天数一次补齐：
+
+```bash
+./scripts/backfill_papers.sh 2026-04-25 2026-05-26 6 /path/to/paper_reader
+```
+
+- 已存在的合法 batch 文件会自动跳过
+- 每个日期独立写入 `paper_batches/YYYY-MM-DD.json`
+- 完成后再用合并脚本一次性整理：
+
+```bash
+python3 ./scripts/merge_batches.py /path/to/paper_reader
+```
+
+### 3. 每日定时任务
+
+将 launchd 配置安装为用户级任务，每天晚上 22:00 自动爬取当天论文、合并到 `paper_list.md` 并 `git push`：
+
+```bash
+cp scripts/com.yuyaoge.paper-daily-fetch.plist ~/Library/LaunchAgents/
+launchctl load -w ~/Library/LaunchAgents/com.yuyaoge.paper-daily-fetch.plist
+```
+
+手动跑一次测试：
+
+```bash
+./scripts/daily_fetch.sh             # 处理今天
+./scripts/daily_fetch.sh 2026-05-26  # 处理指定日期
+```
+
+日志写入 `paper_reader/.kimi_logs/`。
 
 ## ⚙️ 过滤规则
 
