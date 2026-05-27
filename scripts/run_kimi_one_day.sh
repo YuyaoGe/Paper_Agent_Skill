@@ -27,8 +27,18 @@ mkdir -p "$BATCH_DIR" "$LOG_DIR"
 if [[ -f "$OUTPUT_FILE" ]]; then
   if python3 -c "import json,sys; d=json.load(open('${OUTPUT_FILE}')); sys.exit(0 if isinstance(d,list) else 1)" 2>/dev/null; then
     N=$(python3 -c "import json; print(len(json.load(open('${OUTPUT_FILE}'))))" 2>/dev/null || echo 0)
-    echo "[${DATE}] skip (existing valid batch, N=${N})"
-    exit 0
+    if [[ "${N}" -gt 0 ]]; then
+      echo "[${DATE}] skip (batch already has ${N} papers)"
+      exit 0
+    fi
+    # 空 [] 时再探一次 HF：若仍为空则跳过（节省 Kimi 调用），否则重跑
+    HF_COUNT=$(curl -sfL --max-time 15 "https://huggingface.co/api/daily_papers?date=${DATE}" \
+      | python3 -c "import json,sys; d=json.load(sys.stdin); print(len(d) if isinstance(d,list) else 0)" 2>/dev/null || echo 0)
+    if [[ "${HF_COUNT}" -eq 0 ]]; then
+      echo "[${DATE}] skip (existing [] and HF still empty)"
+      exit 0
+    fi
+    echo "[${DATE}] existing [] but HF now has ${HF_COUNT} papers, re-running Kimi"
   fi
 fi
 

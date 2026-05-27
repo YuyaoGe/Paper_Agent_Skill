@@ -92,14 +92,25 @@ ln -sfn "$PWD" ~/.kimi/skills/hf-paper-filter
 python3 ./scripts/merge_batches.py /path/to/paper_reader
 ```
 
-### 3. 每日定时任务
+### 3. 每日定时任务（多次触发 + 幂等）
 
-将 launchd 配置安装为用户级任务，每天晚上 22:00 自动爬取当天论文、合并到 `paper_list.md` 并 `git push`：
+将 launchd 配置安装为用户级任务，**只要电脑开着就自动跑**：
 
 ```bash
 cp scripts/com.yuyaoge.paper-daily-fetch.plist ~/Library/LaunchAgents/
 launchctl load -w ~/Library/LaunchAgents/com.yuyaoge.paper-daily-fetch.plist
 ```
+
+触发逻辑：
+- **登录 / launchctl load 时立即跑一次**（`RunAtLoad: true`）
+- **之后每 2 小时复跑一次**（`StartInterval: 7200`）
+- 错过的触发只在唤醒后补一次，不堆积
+
+幂等机制（重复触发不浪费 Kimi 调用）：
+- 当天 batch 已有论文 → 直接跳过 Kimi
+- 当天 batch 是 `[]` → 先用 HF API 探测；若仍为空则跳过，若新增论文才重跑
+- `paper_list.md` 已含当天日期 → 合并步骤跳过
+- 没有变更 → 不 commit / push
 
 手动跑一次测试：
 
@@ -108,7 +119,10 @@ launchctl load -w ~/Library/LaunchAgents/com.yuyaoge.paper-daily-fetch.plist
 ./scripts/daily_fetch.sh 2026-05-26  # 处理指定日期
 ```
 
-日志写入 `paper_reader/.kimi_logs/`。
+日志写入 `paper_reader/.kimi_logs/`：
+- `daily_YYYY-MM-DD.log` — 当天的端到端日志
+- `YYYY-MM-DD.log` — Kimi 单天处理的原始输出
+- `launchd.out.log` / `launchd.err.log` — launchd 守护进程的标准输出/错误
 
 ## ⚙️ 过滤规则
 

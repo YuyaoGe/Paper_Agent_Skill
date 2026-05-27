@@ -1,16 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  每天 22:00（北京时间）调用 daily_fetch.sh
+  自动爬取并入库当天 HuggingFace Daily Papers。
+
+  触发条件（任一即触发）：
+    - 用户登录 / launchctl load 时立即跑一次（RunAtLoad）
+    - 之后每 2 小时自动复跑一次（StartInterval=7200）
+    - 由于 run_kimi_one_day.sh 内部的「HF API 探测 + 跳过已完成」逻辑，
+      重复触发是幂等的，不会浪费 Kimi 调用。
 
   安装：
     cp scripts/com.yuyaoge.paper-daily-fetch.plist ~/Library/LaunchAgents/
     launchctl unload ~/Library/LaunchAgents/com.yuyaoge.paper-daily-fetch.plist 2>/dev/null
-    launchctl load ~/Library/LaunchAgents/com.yuyaoge.paper-daily-fetch.plist
+    launchctl load -w ~/Library/LaunchAgents/com.yuyaoge.paper-daily-fetch.plist
 
   查看状态：
     launchctl list | grep paper-daily-fetch
     tail -f /Users/yuyaoge/Project/paper_reader/.kimi_logs/daily_*.log
+
+  卸载：
+    launchctl unload -w ~/Library/LaunchAgents/com.yuyaoge.paper-daily-fetch.plist
 -->
 <plist version="1.0">
 <dict>
@@ -24,13 +33,21 @@
         <string>/Users/yuyaoge/Project/Paper_Agent_Skill/scripts/daily_fetch.sh</string>
     </array>
 
+    <!-- 登录 / load 时立即跑一次 -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- 之后每 2 小时复跑一次（合并是幂等的） -->
+    <key>StartInterval</key>
+    <integer>7200</integer>
+
+    <!-- 防止系统休眠时积压：错过的触发只在唤醒后跑一次，不堆积 -->
     <key>StartCalendarInterval</key>
-    <dict>
-        <key>Hour</key>
-        <integer>22</integer>
-        <key>Minute</key>
-        <integer>0</integer>
-    </dict>
+    <array/>
+
+    <!-- 同一时刻只允许一份在跑 -->
+    <key>AbandonProcessGroup</key>
+    <false/>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -39,9 +56,6 @@
         <key>HOME</key>
         <string>/Users/yuyaoge</string>
     </dict>
-
-    <key>RunAtLoad</key>
-    <false/>
 
     <key>StandardOutPath</key>
     <string>/Users/yuyaoge/Project/paper_reader/.kimi_logs/launchd.out.log</string>
