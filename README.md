@@ -92,7 +92,7 @@ ln -sfn "$PWD" ~/.kimi/skills/hf-paper-filter
 python3 ./scripts/merge_batches.py /path/to/paper_reader
 ```
 
-### 3. 每日定时任务（多次触发 + 幂等）
+### 3. 每日定时任务（多次触发 + 幂等 + 自动追赶）
 
 将 launchd 配置安装为用户级任务，**只要电脑开着就自动跑**：
 
@@ -101,28 +101,35 @@ cp scripts/com.yuyaoge.paper-daily-fetch.plist ~/Library/LaunchAgents/
 launchctl load -w ~/Library/LaunchAgents/com.yuyaoge.paper-daily-fetch.plist
 ```
 
-触发逻辑：
-- **登录 / launchctl load 时立即跑一次**（`RunAtLoad: true`）
-- **之后每 2 小时复跑一次**（`StartInterval: 7200`）
+**触发时机：**
+- 登录 / launchctl load 时立即跑一次（`RunAtLoad: true`）
+- 之后每 2 小时复跑一次（`StartInterval: 7200`）
 - 错过的触发只在唤醒后补一次，不堆积
 
-幂等机制（重复触发不浪费 Kimi 调用）：
-- 当天 batch 已有论文 → 直接跳过 Kimi
-- 当天 batch 是 `[]` → 先用 HF API 探测；若仍为空则跳过，若新增论文才重跑
-- `paper_list.md` 已含当天日期 → 合并步骤跳过
+**为什么不抓「今天」？**
+HF Daily Papers 当天列表会持续到深夜才稳定，当天爬取会漏掉后续提交的论文。
+所以 `daily_fetch.sh` 默认抓「**昨天起向前 7 天**」，等一天再爬保证完整、电脑关机几天也能自动补齐。
+
+**幂等机制（重复触发不浪费 Kimi 调用）：**
+- 某天 batch 已有论文 → 直接跳过 Kimi
+- 某天 batch 是 `[]`（旧的空记录）→ 先用 HF API 探测；若仍为空则跳过，若新增论文才重跑
+- `paper_list.md` 已含某天日期 → 合并步骤跳过
 - 没有变更 → 不 commit / push
 
-手动跑一次测试：
+**手动用法：**
 
 ```bash
-./scripts/daily_fetch.sh             # 处理今天
-./scripts/daily_fetch.sh 2026-05-26  # 处理指定日期
+./scripts/daily_fetch.sh                # 默认：补过去 7 天（不含今天）
+./scripts/daily_fetch.sh yesterday      # 只补昨天
+./scripts/daily_fetch.sh 2026-05-26     # 只补指定日期
+./scripts/daily_fetch.sh today          # 抓今天（不推荐，会漏论文）
+./scripts/daily_fetch.sh --days 14      # 自定义回溯窗口
 ```
 
-日志写入 `paper_reader/.kimi_logs/`：
-- `daily_YYYY-MM-DD.log` — 当天的端到端日志
+**日志位置 `paper_reader/.kimi_logs/`：**
+- `daily_YYYY-MM-DD.log` — 端到端运行日志（按本次最早日期命名）
 - `YYYY-MM-DD.log` — Kimi 单天处理的原始输出
-- `launchd.out.log` / `launchd.err.log` — launchd 守护进程的标准输出/错误
+- `launchd.out.log` / `launchd.err.log` — launchd 守护进程输出
 
 ## ⚙️ 过滤规则
 
