@@ -63,7 +63,7 @@ RUN_LOG="$LOG_DIR/daily_${LABEL_DATE}.log"
   echo "=============================================="
 
   echo
-  echo "[1/4] 逐日调用 Kimi（已存在的会自动跳过）…"
+  echo "[1/3] 逐日调用 Kimi（已存在的会自动跳过）…"
   FAIL_COUNT=0
   for d in "${TARGET_DATES[@]}"; do
     bash "$SCRIPT_DIR/run_kimi_one_day.sh" "$d" "$PAPER_READER_DIR" \
@@ -74,30 +74,22 @@ RUN_LOG="$LOG_DIR/daily_${LABEL_DATE}.log"
   fi
 
   echo
-  echo "[2/4] 合并 batch 文件 → paper_list.md …"
+  echo "[2/3] 合并 batch 文件 → paper_list.md …"
   python3 "$SCRIPT_DIR/merge_batches.py" "$PAPER_READER_DIR"
 
   echo
-  echo "[3/4] 提交并推送 paper_reader …"
+  echo "[3/3] 提交并推送 paper_reader …"
   cd "$PAPER_READER_DIR" || exit 1
-  if [[ -n "$(git status --porcelain)" ]]; then
-    git add -A
+  # 只追加 paper_batches/ 和 paper_list.md（避免误推用户 WIP）
+  git add paper_batches/ paper_list.md 2>/dev/null || true
+  if ! git diff --cached --quiet; then
     git commit -m "chore: daily paper update (range ending ${LABEL_DATE})" || true
     git push origin HEAD || echo "[!] git push 失败"
   else
-    echo "  paper_reader 无变更，跳过 push"
+    echo "  paper_reader 无本任务相关变更，跳过 commit/push"
   fi
 
-  echo
-  echo "[4/4] 提交并推送 Paper_Agent_Skill（如有变更）…"
-  cd "$SKILL_DIR" || exit 1
-  if [[ -n "$(git status --porcelain)" ]]; then
-    git add -A
-    git commit -m "chore: scripts update from daily run ${LABEL_DATE}" || true
-    git push origin HEAD || echo "[!] git push 失败"
-  else
-    echo "  Paper_Agent_Skill 无变更，跳过 push"
-  fi
+  # 注意：Paper_Agent_Skill 仓库不在此自动 commit/push，避免误推用户正在编辑的脚本
 
   echo
   echo "结束时间: $(date)"
