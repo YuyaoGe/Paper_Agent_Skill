@@ -66,6 +66,12 @@ RUN_LOG="$LOG_DIR/daily_${LABEL_DATE}.log"
   echo " 开始时间: $(date)"
   echo "=============================================="
 
+  # 先把远端最新拉下来，避免和其它机器（或同机器上次运行）重复处理已完成的日期
+  echo
+  echo "[pre] git pull paper_reader …"
+  cd "$PAPER_READER_DIR" || exit 1
+  git pull --ff-only --quiet origin HEAD || echo "[!] git pull 失败（继续处理本地）"
+
   echo
   echo "[1/3] 逐日调用 Kimi（已存在的会自动跳过）…"
   FAIL_COUNT=0
