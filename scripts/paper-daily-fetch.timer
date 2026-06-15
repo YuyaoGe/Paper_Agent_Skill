@@ -1,0 +1,17 @@
+[Unit]
+Description=Trigger paper-daily-fetch every 2h (and shortly after login)
+
+[Timer]
+# 系统启动 5 分钟后跑一次（首次抓取）
+OnBootSec=5min
+
+# 上次执行完后 2 小时再触发，循环
+OnUnitActiveSec=2h
+
+# 错过的触发只补一次，不堆积
+Persistent=true
+
+Unit=paper-daily-fetch.service
+
+[Install]
+WantedBy=timers.target

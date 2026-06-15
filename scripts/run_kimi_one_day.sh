@@ -1,11 +1,35 @@
 #!/usr/bin/env bash
 # 用 Kimi CLI 处理单天的 HuggingFace Daily Papers，写入 paper_batches/YYYY-MM-DD.json
 # 用法：./run_kimi_one_day.sh YYYY-MM-DD [paper_reader_dir]
+#
+# 环境变量：
+#   KIMI_BIN  覆盖 Kimi 二进制路径（默认尝试 kimi-legacy → kimi-code → which kimi）
 
 set -u
 
+# 防御 launchd / cron 环境的 PATH 被 path_helper 重写
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}"
+
+# 探测 Kimi 二进制位置：环境变量 > legacy（无需重新登录）> 新版 kimi-code > $PATH
+if [[ -n "${KIMI_BIN:-}" && -x "$KIMI_BIN" ]]; then
+  :
+elif [[ -x "$HOME/.local/bin/kimi-legacy" ]]; then
+  KIMI_BIN="$HOME/.local/bin/kimi-legacy"
+elif [[ -x "$HOME/.kimi-code/bin/kimi" ]]; then
+  KIMI_BIN="$HOME/.kimi-code/bin/kimi"
+elif command -v kimi >/dev/null 2>&1; then
+  KIMI_BIN="$(command -v kimi)"
+else
+  echo "ERROR: cannot find Kimi binary (set KIMI_BIN env var)" >&2
+  exit 127
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 DATE="${1:-}"
-PAPER_READER_DIR="${2:-/Users/yuyaoge/Project/paper_reader}"
+# 优先级：CLI 参数 > 环境变量 PAPER_READER_DIR > 与 skill 同级的 ../paper_reader
+PAPER_READER_DIR="${2:-${PAPER_READER_DIR:-$(cd "$SKILL_DIR/.." && pwd)/paper_reader}}"
 
 if [[ -z "$DATE" ]]; then
   echo "Usage: $0 YYYY-MM-DD [paper_reader_dir]" >&2
@@ -59,13 +83,13 @@ PROMPT=$(cat <<EOF
 EOF
 )
 
-echo "[${DATE}] launching Kimi... log: ${LOG_FILE}"
+echo "[${DATE}] launching Kimi (${KIMI_BIN##*/}) ... log: ${LOG_FILE}"
 
 cd "$PAPER_READER_DIR" || exit 1
 
-kimi --print --quiet \
+"$KIMI_BIN" --print --quiet \
   --work-dir "$PAPER_READER_DIR" \
-  --add-dir /Users/yuyaoge/Project/Paper_Agent_Skill \
+  --add-dir "$SKILL_DIR" \
   -p "$PROMPT" \
   > "$LOG_FILE" 2>&1
 

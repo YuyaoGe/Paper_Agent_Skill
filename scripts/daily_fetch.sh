@@ -18,9 +18,13 @@
 
 set -u
 
+# 防御 launchd / cron 环境的 PATH 被 path_helper 重写
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:${PATH:-}"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-PAPER_READER_DIR="/Users/yuyaoge/Project/paper_reader"
+# 优先级：环境变量 PAPER_READER_DIR > 与 skill 同级的 ../paper_reader
+PAPER_READER_DIR="${PAPER_READER_DIR:-$(cd "$SKILL_DIR/.." && pwd)/paper_reader}"
 
 DAYS=7
 TARGET_DATES=()

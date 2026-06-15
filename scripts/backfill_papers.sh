@@ -6,11 +6,13 @@
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 START="${1:-}"
 END="${2:-}"
 CONCURRENCY="${3:-6}"
-PAPER_READER_DIR="${4:-/Users/yuyaoge/Project/paper_reader}"
+# 优先级：CLI > 环境变量 > skill 同级的 ../paper_reader
+PAPER_READER_DIR="${4:-${PAPER_READER_DIR:-$(cd "$SKILL_DIR/.." && pwd)/paper_reader}}"
 
 if [[ -z "$START" || -z "$END" ]]; then
   echo "用法: $0 START_DATE END_DATE [CONCURRENCY] [paper_reader_dir]" >&2

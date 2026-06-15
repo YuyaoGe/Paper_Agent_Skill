@@ -1,0 +1,22 @@
+[Unit]
+Description=HuggingFace Daily Papers fetcher (Kimi-driven)
+Documentation=https://github.com/YuyaoGe/Paper_Agent_Skill
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+
+# 在 systemd 中，%h 展开为当前用户的 HOME。如果你把仓库放在别处，请改这两条路径。
+WorkingDirectory=%h/Project/Paper_Agent_Skill
+ExecStart=/bin/bash %h/Project/Paper_Agent_Skill/scripts/daily_fetch.sh
+
+# 把 PATH 补完整，确保 git / curl / python3 / kimi 都能找到
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PAPER_READER_DIR=%h/Project/paper_reader
+
+# 防止单次任务跑太久（默认 30 分钟超时；遇上特别多的日子可调大）
+TimeoutStartSec=3600
+
+# 失败时不阻塞 timer 下一次触发
+SuccessExitStatus=0
