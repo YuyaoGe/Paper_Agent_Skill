@@ -84,6 +84,8 @@ RUN_LOG="$LOG_DIR/daily_${LABEL_DATE}.log"
   echo
   echo "[3/3] 提交并推送 paper_reader …"
   cd "$PAPER_READER_DIR" || exit 1
+  # 先 fast-forward 拉取远端，避免多设备同时推送时冲突
+  git pull --ff-only --quiet origin HEAD || echo "[!] git pull 失败（继续尝试 commit/push）"
   # 只追加 paper_batches/ 和 paper_list.md（避免误推用户 WIP）
   git add paper_batches/ paper_list.md 2>/dev/null || true
   if ! git diff --cached --quiet; then
